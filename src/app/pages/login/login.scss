@@ -1,0 +1,17 @@
+.pantalla { min-height: 100vh; display: flex; flex-wrap: wrap; background: var(--sup); }
+.marca { flex: 1 1 380px; background: var(--lateral); color: #fff; padding: 40px; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; }
+.marca h1 { font-size: 34px; line-height: 1.15; letter-spacing: -0.02em; max-width: 440px; }
+.marca p { color: #b9ccc5; line-height: 1.6; max-width: 440px; }
+.marca small { color: #8fa9a0; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+.logo span { width: 44px; height: 44px; border-radius: 12px; background: var(--menta); color: var(--lateral); display: flex; align-items: center; justify-content: center; }
+.formulario { flex: 1 1 380px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+.caja { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
+.caja h2 { font-size: 26px; }
+.clave { display: flex; align-items: center; border: 1px solid #c9d3d0; border-radius: 8px; padding-right: 4px; }
+.clave input { border: none; flex: 1; }
+.clave button { border: none; background: none; color: var(--verde); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; padding: 6px 8px; }
+.grande { height: 46px; justify-content: center; }
+.enlace { border: none; background: none; color: var(--verde); font: inherit; font-weight: 700; cursor: pointer; }
+.alerta { background: var(--rojo-bg); border: 1px solid #e3b4a8; color: #8a1f0b; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.ok { background: var(--verde-claro); color: var(--verde); border-radius: 8px; padding: 10px 12px; font-size: 13px; }

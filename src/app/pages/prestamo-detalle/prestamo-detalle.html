@@ -1,0 +1,101 @@
+@if (p(); as p) {
+  <div class="card barra">
+    <a class="btn" routerLink="/prestamos">← Préstamos</a>
+    <div style="flex: 1 1 240px">
+      <h2 style="font-size: 20px">{{ p.codigo }} · {{ p.deudor }} <span [class]="clase[p.resumen.estado]">{{ p.resumen.estado }}{{ p.resumen.diasMora ? ' · ' + p.resumen.diasMora + ' d' : '' }}</span></h2>
+      <span class="muted">{{ p.telefono || 'Sin teléfono' }} · prestado el {{ p.fecha | fecha }} · {{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</span>
+    </div>
+    @if (p.activo && p.resumen.estado !== 'Pagado') { <button class="btn btn--primario" type="button" (click)="modal.set('pago')">Registrar pago</button> }
+    <button class="btn" type="button" (click)="modal.set('editar')">Editar</button>
+    <button class="btn" [class.btn--peligro]="p.activo" type="button" (click)="motivo.set(''); modal.set('desactivar')">{{ p.activo ? 'Desactivar' : 'Activar' }}</button>
+  </div>
+
+  @if (!p.activo) {
+    <div class="card barra muted">Préstamo inactivo desde {{ p.inactivo_desde | fecha }}{{ p.motivo_inactivo ? ' · motivo: ' + p.motivo_inactivo : '' }}. No recibe pagos ni aparece en cobros.</div>
+  }
+
+  <div class="kpis">
+    <div class="card kpi"><span class="kpi__titulo">Capital prestado</span><span class="kpi__valor">{{ p.capital | pesos }}</span></div>
+    <div class="card kpi"><span class="kpi__titulo">Saldo capital</span><span class="kpi__valor">{{ p.resumen.saldo | pesos }}</span></div>
+    <div class="card kpi"><span class="kpi__titulo">Para ponerse al día</span><span class="kpi__valor" [style.color]="p.resumen.totalParaPonerseAlDia ? 'var(--mora)' : null">{{ p.resumen.totalParaPonerseAlDia | pesos }}</span></div>
+    <div class="card kpi"><span class="kpi__titulo">Réditos cobrados</span><span class="kpi__valor">{{ p.resumen.reditosPagados | pesos }}</span></div>
+    <div class="card kpi"><span class="kpi__titulo">Próximo cobro</span><span class="kpi__valor" style="font-size: 18px">{{ p.resumen.proximaFecha | fecha }} · {{ p.resumen.cuotaProximoPeriodo | pesos }}</span></div>
+  </div>
+
+  <div class="opciones">
+    <button type="button" class="opcion" [class.activa]="tab() === 'mov'" (click)="tab.set('mov')">Movimientos ({{ movimientos().length }})</button>
+    <button type="button" class="opcion" [class.activa]="tab() === 'hist'" (click)="tab.set('hist')">Historial de cambios</button>
+  </div>
+
+  @if (tab() === 'mov') {
+    <div class="card tabla-scroll">
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Movimiento</th><th>Medio</th><th class="num">Monto</th><th class="num">Réditos acumulados</th><th class="num">Saldo capital</th><th>Soporte</th></tr></thead>
+        <tbody>
+          @for (m of movimientos(); track $index) {
+            <tr>
+              <td>{{ m.fecha | fecha }}</td>
+              <td><span class="chip" [class.chip--azul]="m.tipo === 'Abono a capital'" [class.chip--ok]="m.tipo === 'Pago de réditos'" [class.chip--gris]="m.tipo === 'Préstamo entregado'">{{ m.tipo }}</span></td>
+              <td>{{ m.medio }}</td>
+              <td class="num" style="font-weight: 700">{{ m.monto | pesos }}</td>
+              <td class="num">{{ m.red | pesos }}</td>
+              <td class="num" style="font-weight: 700">{{ m.saldo | pesos }}</td>
+              <td>
+                @if (m.pago?.comprobante_path) { <button class="btn btn--chico" type="button" (click)="verComprobante(m.pago!.comprobante_path!)">Ver</button> }
+                @else if (m.pago && m.pago.medio !== 'Efectivo') { <span style="color: var(--mora); font-weight: 700; font-size: 12px">Falta</span> }
+                @else { <span class="muted">—</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <div class="card tabla-scroll">
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Evento</th><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+        <tbody>
+          @for (h of historial(); track $index) {
+            <tr>
+              <td>{{ h.primera ? (h.fecha | fecha) : '' }}</td>
+              <td>@if (h.primera) { <span class="chip chip--azul">{{ h.evento }}</span> }</td>
+              <td style="font-weight: 700">{{ h.campo }}</td>
+              <td [style.text-decoration]="h.antes !== '—' ? 'line-through' : null" class="muted">{{ h.antes }}</td>
+              <td style="font-weight: 600">{{ h.despues }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="vacio">Sin eventos registrados.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (modal() === 'pago') { <app-pago-form [p]="p" (cerrar)="modal.set(null)" (guardado)="mostrar($event)" /> }
+  @if (modal() === 'editar') { <app-prestamo-form [prestamo]="p" (cerrar)="modal.set(null)" (guardado)="mostrar('Préstamo actualizado')" /> }
+  @if (modal() === 'desactivar') {
+    <div class="modal-fondo" (click)="modal.set(null)">
+      <div class="modal" role="dialog" aria-label="Cambiar estado" (click)="$event.stopPropagation()">
+        <div class="modal__cab"><strong>{{ p.activo ? 'Desactivar' : 'Activar' }} {{ p.codigo }}</strong><button type="button" aria-label="Cerrar" (click)="modal.set(null)">×</button></div>
+        <div class="modal__cuerpo">
+          @if (p.activo) {
+            <p style="margin: 0" class="muted">Dejará de aparecer en cobros e indicadores y no recibirá pagos. Su historial se conserva.</p>
+            <label class="campo">Motivo (opcional)<textarea rows="3" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></textarea></label>
+          } @else {
+            <p style="margin: 0">El préstamo volverá a su estado normal.</p>
+          }
+          <div class="modal__pie">
+            <button class="btn" type="button" (click)="modal.set(null)">Cancelar</button>
+            <button class="btn btn--primario" type="button" (click)="cambiarEstado()">{{ p.activo ? 'Desactivar' : 'Activar' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+} @else {
+  <div class="card vacio">Cargando préstamo…</div>
+}
+
+@if (aviso()) {
+  <div role="status" style="position: fixed; top: 72px; right: 20px; background: var(--tinta); color: #fff; padding: 12px 16px; border-radius: 10px; font-weight: 700; z-index: 60">{{ aviso() }}</div>
+}

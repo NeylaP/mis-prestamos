@@ -1,0 +1,54 @@
+# Compila, prueba y publica la app en GitHub Pages en cada push a main.
+# Requiere en el repositorio (Settings → Secrets and variables → Actions → Variables):
+#   SUPABASE_URL        → https://xxxx.supabase.co
+#   SUPABASE_ANON_KEY   → llave anon public (es pública; la seguridad la dan las políticas RLS)
+# Y en Settings → Pages → Source: "GitHub Actions".
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Probar el motor de cálculo
+        run: npx ng test --watch=false
+      - name: Configurar Supabase
+        run: |
+          test -n "${{ vars.SUPABASE_URL }}" || { echo "Falta la variable SUPABASE_URL"; exit 1; }
+          sed -i "s|__SUPABASE_URL__|${{ vars.SUPABASE_URL }}|; s|__SUPABASE_ANON_KEY__|${{ vars.SUPABASE_ANON_KEY }}|" src/environments/environment.ts
+      - name: Compilar
+        run: npx ng build --base-href "/${{ github.event.repository.name }}/"
+      - name: Soporte para rutas de Angular (recargar sin error 404)
+        run: cp dist/mis-prestamos/browser/index.html dist/mis-prestamos/browser/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/mis-prestamos/browser
+
+  publicar:
+    needs: compilar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - id: despliegue
+        uses: actions/deploy-pages@v4

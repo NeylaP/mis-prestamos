@@ -1,0 +1,18 @@
+:host { display: flex; flex-direction: column; min-height: 100vh; }
+.cab { height: 60px; background: var(--sup); border-bottom: 1px solid var(--linea); display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+.marca { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--tinta); }
+.logo { width: 36px; height: 36px; border-radius: 10px; background: var(--verde); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.nombre { font-weight: 800; font-size: 14px; line-height: 1.1; }
+.usuario { font-size: 13px; color: var(--gris); }
+.cuerpo { flex: 1; display: flex; }
+.lateral { width: 92px; background: var(--lateral); display: flex; flex-direction: column; padding: 8px 0; gap: 2px; }
+.lateral a { height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  color: #b9ccc5; text-decoration: none; font-size: 11px; font-weight: 700; }
+.lateral a.activo { background: #1b4a3f; color: #fff; box-shadow: inset 3px 0 0 var(--menta); }
+.contenido { flex: 1; min-width: 0; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 760px) {
+  .cuerpo { flex-direction: column; }
+  .lateral { width: 100%; flex-direction: row; overflow-x: auto; padding: 0; }
+  .lateral a { min-width: 84px; height: 60px; }
+  .usuario, .nombre { display: none; }
+}

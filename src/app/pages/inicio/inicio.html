@@ -1,0 +1,53 @@
+<div class="kpis">
+  <div class="card kpi" style="background: var(--verde); border-color: var(--verde); color: #fff">
+    <span class="kpi__titulo" style="color: #cfe6df">Capital en la calle</span>
+    <span class="kpi__valor">{{ kpis().enLaCalle | pesos }}</span>
+    <span style="font-size: 12px; color: #cfe6df">{{ kpis().nActivos }} préstamos activos</span>
+  </div>
+  <div class="card kpi">
+    <span class="kpi__titulo">Pendiente por cobrar</span>
+    <span class="kpi__valor" style="color: var(--mora)">{{ kpis().pendiente | pesos }}</span>
+    <span class="muted" style="font-size: 12px">réditos y capital vencidos</span>
+  </div>
+  <div class="card kpi">
+    <span class="kpi__titulo">Réditos cobrados</span>
+    <span class="kpi__valor">{{ kpis().reditosCobrados | pesos }}</span>
+    <span class="muted" style="font-size: 12px">todos los pagos</span>
+  </div>
+  <div class="card kpi" style="background: var(--mora-bg); border-color: #f3c9a8">
+    <span class="kpi__titulo" style="color: var(--mora)">En mora</span>
+    <span class="kpi__valor" style="color: var(--mora)">{{ kpis().enMora }}</span>
+    <span style="font-size: 12px; color: var(--mora)">pasaron los días de gracia</span>
+  </div>
+</div>
+
+<section class="card">
+  <div class="barra" style="border-bottom: 1px solid var(--linea-2)">
+    <h2 style="font-size: 16px">Por cobrar y atrasados</h2>
+    <span class="espacio"></span>
+    <a routerLink="/prestamos" style="font-weight: 700; font-size: 13px">Ver todos los préstamos</a>
+  </div>
+  @if (error()) {
+    <div class="vacio error">{{ error() }}</div>
+  } @else if (cargando() && !porCobrar().length) {
+    <div class="vacio">Cargando…</div>
+  } @else {
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead><tr><th>Deudor</th><th>Fecha de cobro</th><th class="num">Monto</th><th>Estado</th></tr></thead>
+        <tbody>
+          @for (p of porCobrar(); track p.id) {
+            <tr>
+              <td><a [routerLink]="['/prestamos', p.id]" style="font-weight: 700">{{ p.deudor }}</a></td>
+              <td>{{ (p.resumen.totalParaPonerseAlDia > 0 ? p.resumen.cuotaMasAntiguaSinPagar : p.resumen.proximaFecha) | fecha }}</td>
+              <td class="num" style="font-weight: 700">{{ (p.resumen.totalParaPonerseAlDia > 0 ? p.resumen.totalParaPonerseAlDia : p.resumen.cuotaProximoPeriodo) | pesos }}</td>
+              <td><span [class]="clase[p.resumen.estado]">{{ p.resumen.estado }}{{ p.resumen.diasMora ? ' · ' + p.resumen.diasMora + ' d' : '' }}</span></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="vacio">No tienes préstamos activos. Crea el primero en <a routerLink="/prestamos">Préstamos</a>.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

@@ -1,0 +1,43 @@
+<div class="pantalla">
+  <section class="marca">
+    <div class="logo"><span>MP</span> Mis Préstamos</div>
+    <div>
+      <h1>Tus préstamos en un solo lugar.</h1>
+      <p>Sabe a quién cobrarle hoy, quién está en mora y cuánto tienes en la calle, desde el celular o el computador.</p>
+    </div>
+    <small>Acceso solo con invitación.</small>
+  </section>
+
+  <section class="formulario">
+    @if (modo() === 'login') {
+      <form (ngSubmit)="entrar()" class="caja">
+        <h2>Iniciar sesión</h2>
+        <label class="campo">Correo electrónico
+          <input type="email" name="correo" autocomplete="username" [(ngModel)]="correo" required>
+        </label>
+        <label class="campo">Contraseña
+          <span class="clave">
+            <input [type]="verClave() ? 'text' : 'password'" name="clave" autocomplete="current-password" [(ngModel)]="clave" required>
+            <button type="button" (click)="verClave.set(!verClave())">{{ verClave() ? 'Ocultar' : 'Mostrar' }}</button>
+          </span>
+        </label>
+        @if (error()) { <div class="alerta" role="alert">{{ error() }}</div> }
+        <button class="btn btn--primario grande" type="submit" [disabled]="enviando()">{{ enviando() ? 'Entrando…' : 'Entrar' }}</button>
+        <button class="enlace" type="button" (click)="cambiarModo('recuperar')">¿Olvidaste tu contraseña?</button>
+      </form>
+    } @else {
+      <form (ngSubmit)="recuperar()" class="caja">
+        <h2>Recuperar contraseña</h2>
+        <p class="muted">Escribe tu correo y te enviamos un enlace para crear una nueva contraseña.</p>
+        <label class="campo">Correo electrónico
+          <input type="email" name="correo" [(ngModel)]="correo" required>
+        </label>
+        @if (enviado()) {
+          <div class="ok" role="status">Si el correo está registrado, te llegará un enlace. Revisa también la carpeta de spam.</div>
+        }
+        <button class="btn btn--primario grande" type="submit" [disabled]="enviando()">Enviar enlace</button>
+        <button class="enlace" type="button" (click)="cambiarModo('login')">← Volver a iniciar sesión</button>
+      </form>
+    }
+  </section>
+</div>

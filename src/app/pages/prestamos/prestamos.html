@@ -1,0 +1,45 @@
+<div class="card barra">
+  <button class="btn btn--primario" type="button" (click)="nuevo.set(true)">+ Nuevo préstamo</button>
+  <label class="campo" style="flex: 0 1 260px">
+    <input type="search" placeholder="Buscar deudor, código o teléfono" aria-label="Buscar" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)">
+  </label>
+  <div class="opciones">
+    @for (f of filtros; track f) {
+      <button type="button" class="opcion" [class.activa]="filtro() === f" (click)="filtro.set(f)">{{ f === 'Pagado' ? 'Pagados' : f }}</button>
+    }
+  </div>
+  <span class="espacio"></span>
+  <span class="muted">Mostrando {{ filas().length }} de {{ total() }}</span>
+  <label style="display: flex; gap: 6px; align-items: center; font-size: 13px">
+    <input type="checkbox" [ngModel]="verInactivos()" (ngModelChange)="verInactivos.set($event)"> Mostrar inactivos
+  </label>
+</div>
+
+<div class="card tabla-scroll">
+  <table class="tabla">
+    <thead>
+      <tr><th>Código</th><th>Deudor</th><th>Fecha</th><th class="num">Capital</th><th>Tasa</th><th class="num">Saldo</th><th class="num">Pendiente</th><th>Próximo cobro</th><th>Estado</th></tr>
+    </thead>
+    <tbody>
+      @for (p of filas(); track p.id) {
+        <tr [style.opacity]="p.activo ? 1 : 0.6">
+          <td class="muted">{{ p.codigo }}</td>
+          <td><a [routerLink]="['/prestamos', p.id]" style="font-weight: 700">{{ p.deudor }}</a></td>
+          <td>{{ p.fecha | fecha }}</td>
+          <td class="num">{{ p.capital | pesos }}</td>
+          <td>{{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</td>
+          <td class="num" style="font-weight: 700">{{ p.resumen.saldo | pesos }}</td>
+          <td class="num" style="font-weight: 700" [style.color]="p.resumen.totalParaPonerseAlDia ? 'var(--mora)' : null">{{ p.resumen.totalParaPonerseAlDia | pesos }}</td>
+          <td>{{ p.resumen.proximaFecha | fecha }}</td>
+          <td><span [class]="clase[p.resumen.estado]">{{ p.resumen.estado }}{{ p.resumen.diasMora ? ' · ' + p.resumen.diasMora + ' d' : '' }}</span></td>
+        </tr>
+      } @empty {
+        <tr><td colspan="9" class="vacio">{{ cargando() ? 'Cargando…' : 'No hay préstamos que coincidan.' }}</td></tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+@if (nuevo()) {
+  <app-prestamo-form (cerrar)="nuevo.set(false)" (guardado)="nuevo.set(false)" />
+}
