@@ -33,8 +33,14 @@ jobs:
         run: npx ng test --watch=false
       - name: Configurar Supabase
         run: |
-          test -n "${{ vars.SUPABASE_URL }}" || { echo "Falta la variable SUPABASE_URL"; exit 1; }
-          sed -i "s|__SUPABASE_URL__|${{ vars.SUPABASE_URL }}|; s|__SUPABASE_ANON_KEY__|${{ vars.SUPABASE_ANON_KEY }}|" src/environments/environment.ts
+          if [ -n "${{ vars.SUPABASE_URL }}" ] && [ -n "${{ vars.SUPABASE_ANON_KEY }}" ]; then
+            sed -i "s|__SUPABASE_URL__|${{ vars.SUPABASE_URL }}|; s|__SUPABASE_ANON_KEY__|${{ vars.SUPABASE_ANON_KEY }}|" src/environments/environment.ts
+          elif [ -z "${{ vars.SUPABASE_URL }}" ] && [ -z "${{ vars.SUPABASE_ANON_KEY }}" ]; then
+            echo "Variables SUPABASE_URL y SUPABASE_ANON_KEY no definidas; se usan los valores de src/environments/environment.ts"
+          else
+            echo "Define ambas variables SUPABASE_URL y SUPABASE_ANON_KEY para reemplazar los valores del entorno."
+            exit 1
+          fi
       - name: Compilar
         run: npx ng build --base-href "/${{ github.event.repository.name }}/"
       - name: Soporte para rutas de Angular (recargar sin error 404)
