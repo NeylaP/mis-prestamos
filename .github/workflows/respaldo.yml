@@ -5,7 +5,7 @@
 #                             con la contraseña de la base de datos incluida.
 #   Secret  BACKUP_TOKEN    → token fine-grained de GitHub con permiso Contents: Read and write
 #                             SOLO sobre el repositorio privado de respaldos.
-#   Variable BACKUP_REPO    → usuario/nombre-del-repo-privado (ej.: neyla/mis-prestamos-respaldos)
+#   Variable BACKUP_REPO    → usuario/nombre-del-repo-privado (ej.: NeylaP/mis-prestamos-respaldos)
 name: Respaldo semanal
 
 on:
@@ -20,13 +20,26 @@ jobs:
   respaldar:
     runs-on: ubuntu-latest
     steps:
+      - name: Comprobar secretos y variables
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          TOKEN: ${{ secrets.BACKUP_TOKEN }}
+          REPO: ${{ vars.BACKUP_REPO }}
+        run: |
+          missing=0
+          [ -n "$DB" ] || { echo "Falta el secret SUPABASE_DB_URL (Settings → Secrets and variables → Actions → Secrets)."; missing=1; }
+          [ -n "$TOKEN" ] || { echo "Falta el secret BACKUP_TOKEN."; missing=1; }
+          [ -n "$REPO" ] || { echo "Falta la variable BACKUP_REPO (ej.: NeylaP/mis-prestamos-respaldos)."; missing=1; }
+          exit "$missing"
       - name: Volcar la base de datos
         env:
           DB: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p salida
           # pg_dump debe ser de la misma versión mayor que el servidor de Supabase (o más nueva).
-          docker run --rm -e DB postgres:17 sh -c 'pg_dump "$DB" --schema=public --no-owner --no-privileges' \
+          # -e DB=... pasa el valor del entorno del paso al contenedor.
+          docker run --rm -e "DB=$DB" postgres:17 \
+            sh -c 'pg_dump "$DB" --schema=public --no-owner --no-privileges' \
             | gzip > "salida/respaldo-$(date +%F).sql.gz"
           test "$(gzip -dc salida/*.gz | wc -c)" -gt 1000 || { echo "El respaldo salió vacío"; exit 1; }
       - name: Guardar en el repositorio privado
