@@ -1,4 +1,11 @@
-import { calcularResumen, periodosVencidos, repartirPago, vencimientoPeriodo } from './prestamos-calculo';
+import {
+  calcularResumen,
+  diasEntre,
+  factorPrimerPeriodoMensual,
+  periodosVencidos,
+  repartirPago,
+  vencimientoPeriodo,
+} from './prestamos-calculo';
 
 // Casos tomados del Excel y del mockup (fecha de corte: 14/10/2026).
 const HOY = '2026-10-14';
@@ -94,11 +101,59 @@ describe('estados especiales', () => {
     const p = { ...base, fecha: '2026-10-08', diaCobro: 1, diasGracia: 3 };
     const enCorte = calcularResumen(p, [], '2026-11-01');
     expect(enCorte.periodosVencidos).toBe(1);
-    expect(enCorte.reditosPendientes).toBe(25_000);
+    expect(enCorte.reditosPendientes).toBe(25_000); // >15 días → cuota completa
     expect(enCorte.estado).toBe('En gracia'); // día 0 de mora, dentro de gracia
     const enMora = calcularResumen(p, [], '2026-11-05');
     expect(enMora.diasMora).toBe(4);
     expect(enMora.estado).toBe('En mora');
+  });
+});
+
+describe('regla de 15 días · primer periodo mensual', () => {
+  it('media cuota si hay ~15 días o menos; completa si hay más', () => {
+    expect(diasEntre('2026-10-13', '2026-11-01')).toBe(19);
+    expect(factorPrimerPeriodoMensual(19)).toBe(0.5); // Neyla P002
+    expect(diasEntre('2026-10-08', '2026-11-01')).toBe(24);
+    expect(factorPrimerPeriodoMensual(24)).toBe(1); // Neyla P001
+    expect(factorPrimerPeriodoMensual(15)).toBe(0.5);
+    expect(factorPrimerPeriodoMensual(30)).toBe(1);
+  });
+
+  it('P002 · prestado el 13, corte el 1, pagó media cuota el 30 → al día', () => {
+    const r = calcularResumen(
+      { fecha: '2026-10-13', capital: 1_000_000, tasa: 0.1, frecuencia: 'Mensual', abonoPactado: 0, diasGracia: 3, activo: true, diaCobro: 1 },
+      [{ fecha: '2026-10-30', tipo: 'Réditos', monto: 50_000 }],
+      '2026-11-02',
+    );
+    expect(r.reditosCausados).toBe(50_000);
+    expect(r.reditosPendientes).toBe(0);
+    expect(r.totalParaPonerseAlDia).toBe(0);
+    expect(r.estado).toBe('Al día');
+    expect(r.proximaFecha).toBe('2026-12-01');
+    expect(r.cuotaProximoPeriodo).toBe(100_000); // siguiente periodo ya completo
+  });
+
+  it('P001 · prestado el 8 (>15 días) cobra cuota completa de réditos', () => {
+    const r = calcularResumen(
+      { fecha: '2026-10-08', capital: 1_500_000, tasa: 0.1, frecuencia: 'Mensual', abonoPactado: 0, diasGracia: 3, activo: true, diaCobro: 1 },
+      [{ fecha: '2026-10-30', tipo: 'Capital', monto: 150_000 }],
+      '2026-11-02',
+    );
+    expect(r.saldo).toBe(1_350_000);
+    // Completa: 1.5M×10% − ahorro del abono = 150k − 15k = 135k pendientes de réditos
+    expect(r.reditosPendientes).toBe(135_000);
+    expect(r.proximaFecha).toBe('2026-12-01');
+  });
+
+  it('si el pago del 30 fue de réditos (cuota completa), P001 queda al día', () => {
+    const r = calcularResumen(
+      { fecha: '2026-10-08', capital: 1_500_000, tasa: 0.1, frecuencia: 'Mensual', abonoPactado: 0, diasGracia: 3, activo: true, diaCobro: 1 },
+      [{ fecha: '2026-10-30', tipo: 'Réditos', monto: 150_000 }],
+      '2026-11-02',
+    );
+    expect(r.saldo).toBe(1_500_000);
+    expect(r.reditosPendientes).toBe(0);
+    expect(r.estado).toBe('Al día');
   });
 });
 

@@ -10,6 +10,9 @@
  * - El día de cobro mensual es la fecha de corte (como en una tarjeta de crédito):
  *   pactado e independiente del día del préstamo. A partir de ese día se causa el
  *   periodo (réditos) y, si no se paga, empieza a contar la mora tras los días de gracia.
+ * - Regla del primer periodo (mensual): si hay ~15 días o menos hasta el primer corte
+ *   se cobra media cuota de réditos; si hay más, cuota completa. Los siguientes periodos
+ *   siempre son completos.
  */
 
 export type Frecuencia = 'Mensual' | 'Quincenal' | 'Semanal' | 'Diario';
@@ -109,30 +112,69 @@ export function vencimientoPeriodo(inicio: string, frecuencia: Frecuencia, n: nu
   return aIso(f);
 }
 
+/**
+ * Factor de réditos del primer periodo mensual (regla de los 15 días):
+ * - ≈15 días o menos hasta el primer corte → media cuota (0.5)
+ * - más de eso → cuota completa (1)
+ *
+ * Se redondea a quincenas para que casos como préstamo el 13 con corte el 1
+ * (19 días corridos, “unos 15 días”) cobren media, y el 8 (24 días) cobre completa.
+ */
+export function factorPrimerPeriodoMensual(diasHastaPrimerCorte: number): number {
+  if (diasHastaPrimerCorte <= 0) return 0;
+  const quincenas = Math.max(1, Math.round(diasHastaPrimerCorte / 15));
+  return Math.min(1, quincenas * 0.5);
+}
+
+/** Periodos efectivos para causar réditos (el primero puede ser media cuota). */
+export function periodosEfectivos(
+  inicio: string,
+  frecuencia: Frecuencia,
+  fecha: string,
+  diaCobro?: number,
+): number {
+  const pv = periodosVencidos(inicio, frecuencia, fecha, diaCobro);
+  if (pv <= 0) return 0;
+  if (frecuencia !== 'Mensual') return pv;
+  const dia = diaCobro ?? aFecha(inicio).getDate();
+  const primerCorte = vencimientoPeriodo(inicio, frecuencia, 1, dia);
+  const factor1 = factorPrimerPeriodoMensual(diasEntre(inicio, primerCorte));
+  return factor1 + (pv - 1);
+}
+
 /** Redondea a pesos para evitar residuos de punto flotante en los resultados. */
 const pesos = (n: number) => Math.round(n);
 
 export function calcularResumen(p: DatosPrestamo, pagos: DatosPago[], hoy: string, diasAviso = 3): ResumenPrestamo {
   const dia = p.diaCobro || 1;
   const pv = periodosVencidos(p.fecha, p.frecuencia, hoy, dia);
+  const pe = periodosEfectivos(p.fecha, p.frecuencia, hoy, dia);
   const abonosCapital = pagos.filter((g) => g.tipo === 'Capital').reduce((a, g) => a + g.monto, 0);
   const reditosPagados = pagos.filter((g) => g.tipo === 'Réditos').reduce((a, g) => a + g.monto, 0);
   const saldo = Math.max(0, p.capital - abonosCapital);
 
-  // Réditos que dejó de causar cada abono a capital desde el periodo en que se hizo.
+  // Réditos que dejó de causar cada abono a capital desde el momento en que se hizo.
   const ahorro = pagos
     .filter((g) => g.tipo === 'Capital')
-    .reduce((a, g) => a + g.monto * p.tasa * Math.max(0, pv - periodosVencidos(p.fecha, p.frecuencia, g.fecha, dia)), 0);
-  const reditosCausados = Math.max(0, p.capital * p.tasa * pv - ahorro);
+    .reduce((a, g) => {
+      const pePago = periodosEfectivos(p.fecha, p.frecuencia, g.fecha, dia);
+      return a + g.monto * p.tasa * Math.max(0, pe - pePago);
+    }, 0);
+  const reditosCausados = Math.max(0, p.capital * p.tasa * pe - ahorro);
   const reditosPendientes = Math.max(0, reditosCausados - reditosPagados);
   const capitalAtrasado = Math.max(0, Math.min(p.capital, p.abonoPactado * pv) - abonosCapital);
   const total = reditosPendientes + capitalAtrasado;
-  const cuota = saldo <= 0 ? 0 : saldo * p.tasa + Math.min(p.abonoPactado, saldo);
+
+  // La próxima cuota: si aún no vence el primer corte, aplica el factor del primer periodo.
+  const factorCuota = pv === 0 && p.frecuencia === 'Mensual'
+    ? factorPrimerPeriodoMensual(diasEntre(p.fecha, vencimientoPeriodo(p.fecha, p.frecuencia, 1, dia)))
+    : 1;
+  const cuota = saldo <= 0 ? 0 : saldo * p.tasa * factorCuota + Math.min(p.abonoPactado, saldo);
   const proximaFecha = saldo <= 0 ? null : vencimientoPeriodo(p.fecha, p.frecuencia, pv + 1, dia);
 
   let atrasados = 0;
   if (total > 0) {
-    const divisor = cuota > 0 ? cuota : Math.max(1, p.capital * p.tasa);
+    const divisor = cuota > 0 ? cuota : Math.max(1, p.capital * p.tasa * factorCuota);
     atrasados = Math.min(pv, Math.ceil(total / divisor));
   }
   const cuotaMasAntigua = atrasados > 0 ? vencimientoPeriodo(p.fecha, p.frecuencia, pv - atrasados + 1, dia) : null;

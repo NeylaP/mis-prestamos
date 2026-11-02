@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { aNumero, PesosPipe } from '../../core/formato';
 import { Prestamo } from '../../core/modelos';
 import { PrestamosService } from '../../core/prestamos.service';
-import { aFecha, Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
+import { aFecha, diasEntre, factorPrimerPeriodoMensual, Frecuencia, hoyIso, vencimientoPeriodo } from '../../domain/prestamos-calculo';
 
 /** Modal para crear o editar un préstamo. */
 @Component({
@@ -20,7 +20,7 @@ import { aFecha, Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
             <label class="campo">Fecha del préstamo *<input type="date" name="fecha" [(ngModel)]="fecha" [max]="hoy" required></label>
             <label class="campo">Día de corte / cobro *
               <input type="number" name="diaCobro" min="1" max="31" [(ngModel)]="diaCobro" required>
-              <span class="muted" style="font-weight: 400">Como la fecha de corte de una tarjeta: a partir de ese día del mes se causan los réditos y corre la mora (ej. 1). Si el mes no tiene ese día, se usa el último.</span>
+              <span class="muted" style="font-weight: 400">Fecha de corte (como una tarjeta). A partir de ese día se causan réditos y corre la mora. Primer periodo: 15 días o menos → media cuota; más de 15 → completa. Si el mes no tiene ese día, se usa el último.</span>
             </label>
             <label class="campo">Capital prestado *<input name="capital" [ngModel]="capital()" (ngModelChange)="capital.set(miles($event))" inputmode="numeric" required></label>
             <label class="campo">Tasa por periodo (%) *<input name="tasa" [ngModel]="tasa()" (ngModelChange)="tasa.set($event)" inputmode="decimal" required></label>
@@ -68,7 +68,13 @@ export class PrestamoForm implements OnInit {
   readonly titulo = computed(() => (this.prestamo() ? 'Editar préstamo ' + this.prestamo()!.codigo : 'Nuevo préstamo'));
   readonly cuota = computed(() => {
     const c = aNumero(this.capital());
-    return c * this.tasaNum() + Math.min(aNumero(this.abono()), c);
+    const tasa = this.tasaNum();
+    const abono = Math.min(aNumero(this.abono()), c);
+    if (!this.fecha || this.frecuencia() !== 'Mensual') return c * tasa + abono;
+    const dia = Math.trunc(+this.diaCobro) || 1;
+    const primerCorte = vencimientoPeriodo(this.fecha, 'Mensual', 1, dia);
+    const factor = factorPrimerPeriodoMensual(diasEntre(this.fecha, primerCorte));
+    return c * tasa * factor + abono;
   });
 
   ngOnInit(): void {
