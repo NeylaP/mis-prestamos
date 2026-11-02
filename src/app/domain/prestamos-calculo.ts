@@ -7,7 +7,9 @@
  * - Los réditos se causan al final de cada periodo sobre el saldo de capital vigente.
  * - Un abono a capital deja de causar réditos en los periodos siguientes.
  * - El "abono pactado" es capital que debe abonar cada periodo (0 = solo réditos).
- * - El día de cobro (mensual) es pactado y no tiene que coincidir con el día del préstamo.
+ * - El día de cobro mensual es la fecha de corte (como en una tarjeta de crédito):
+ *   pactado e independiente del día del préstamo. A partir de ese día se causa el
+ *   periodo (réditos) y, si no se paga, empieza a contar la mora tras los días de gracia.
  */
 
 export type Frecuencia = 'Mensual' | 'Quincenal' | 'Semanal' | 'Diario';
@@ -21,7 +23,7 @@ export interface DatosPrestamo {
   abonoPactado: number;
   diasGracia: number;
   activo: boolean;
-  /** Día del mes pactado para cobrar (1–31). Solo afecta frecuencia Mensual. */
+  /** Día del mes de corte/cobro (1–31). Solo afecta frecuencia Mensual. */
   diaCobro: number;
 }
 

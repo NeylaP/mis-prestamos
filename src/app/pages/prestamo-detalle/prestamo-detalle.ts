@@ -10,7 +10,7 @@ import { PagoForm } from './pago-form';
 
 const CAMPOS: Record<string, string> = {
   deudor: 'Deudor', telefono: 'Teléfono', fecha: 'Fecha', capital: 'Capital', tasa: 'Tasa', frecuencia: 'Frecuencia',
-  dia_cobro: 'Día de cobro', abono_pactado: 'Abono pactado', dias_gracia: 'Días de gracia', activo: 'Activo',
+  dia_cobro: 'Día de corte', abono_pactado: 'Abono pactado', dias_gracia: 'Días de gracia', activo: 'Activo',
   motivo_inactivo: 'Motivo', notas: 'Notas', inactivo_desde: 'Inactivo desde',
 };
 const TITULO_EVENTO: Record<string, string> = { creado: 'Creación', editado: 'Edición', activado: 'Activación', desactivado: 'Desactivación', pago: 'Pago' };

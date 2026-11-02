@@ -18,9 +18,9 @@ import { aFecha, Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
             <label class="campo">Deudor *<input name="deudor" [(ngModel)]="deudor" required></label>
             <label class="campo">Teléfono<input name="telefono" [(ngModel)]="telefono" inputmode="tel"></label>
             <label class="campo">Fecha del préstamo *<input type="date" name="fecha" [(ngModel)]="fecha" [max]="hoy" required></label>
-            <label class="campo">Día de cobro *
+            <label class="campo">Día de corte / cobro *
               <input type="number" name="diaCobro" min="1" max="31" [(ngModel)]="diaCobro" required>
-              <span class="muted" style="font-weight: 400">Día del mes pactado (ej. 1). Si el mes no tiene ese día, se usa el último.</span>
+              <span class="muted" style="font-weight: 400">Como la fecha de corte de una tarjeta: a partir de ese día del mes se causan los réditos y corre la mora (ej. 1). Si el mes no tiene ese día, se usa el último.</span>
             </label>
             <label class="campo">Capital prestado *<input name="capital" [ngModel]="capital()" (ngModelChange)="capital.set(miles($event))" inputmode="numeric" required></label>
             <label class="campo">Tasa por periodo (%) *<input name="tasa" [ngModel]="tasa()" (ngModelChange)="tasa.set($event)" inputmode="decimal" required></label>

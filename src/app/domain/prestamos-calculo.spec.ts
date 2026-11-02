@@ -89,6 +89,17 @@ describe('estados especiales', () => {
     expect(r.proximaFecha).toBe('2026-11-01');
     expect(r.periodosVencidos).toBe(0);
   });
+
+  it('en el día de corte ya se causan réditos; sin pago entra en gracia/mora', () => {
+    const p = { ...base, fecha: '2026-10-08', diaCobro: 1, diasGracia: 3 };
+    const enCorte = calcularResumen(p, [], '2026-11-01');
+    expect(enCorte.periodosVencidos).toBe(1);
+    expect(enCorte.reditosPendientes).toBe(25_000);
+    expect(enCorte.estado).toBe('En gracia'); // día 0 de mora, dentro de gracia
+    const enMora = calcularResumen(p, [], '2026-11-05');
+    expect(enMora.diasMora).toBe(4);
+    expect(enMora.estado).toBe('En mora');
+  });
 });
 
 describe('repartirPago', () => {

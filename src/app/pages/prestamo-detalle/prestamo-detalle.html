@@ -3,7 +3,7 @@
     <a class="btn" routerLink="/prestamos">← Préstamos</a>
     <div style="flex: 1 1 240px">
       <h2 style="font-size: 20px">{{ p.codigo }} · {{ p.deudor }} <span [class]="clase[p.resumen.estado]">{{ p.resumen.estado }}{{ p.resumen.diasMora ? ' · ' + p.resumen.diasMora + ' d' : '' }}</span></h2>
-      <span class="muted">{{ p.telefono || 'Sin teléfono' }} · prestado el {{ p.fecha | fecha }}@if (p.frecuencia === 'Mensual') { · cobra el día {{ diaCobro(p) }} } · {{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</span>
+      <span class="muted">{{ p.telefono || 'Sin teléfono' }} · prestado el {{ p.fecha | fecha }}@if (p.frecuencia === 'Mensual') { · corte el día {{ diaCobro(p) }} } · {{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</span>
     </div>
     @if (p.activo && p.resumen.estado !== 'Pagado') { <button class="btn btn--primario" type="button" (click)="modal.set('pago')">Registrar pago</button> }
     <button class="btn" type="button" (click)="modal.set('editar')">Editar</button>
