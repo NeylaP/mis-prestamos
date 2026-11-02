@@ -12,12 +12,20 @@ describe('periodos y vencimientos', () => {
 
   it('respeta el fin de mes', () => {
     expect(vencimientoPeriodo('2026-01-31', 'Mensual', 1)).toBe('2026-02-28');
+    expect(vencimientoPeriodo('2026-01-10', 'Mensual', 1, 31)).toBe('2026-02-28');
+  });
+
+  it('usa el día de cobro pactado, no el día del préstamo', () => {
+    // Neyla: prestado el 08/10/2026, cobro el día 1 → próximo = 01/11/2026
+    expect(vencimientoPeriodo('2026-10-08', 'Mensual', 1, 1)).toBe('2026-11-01');
+    expect(periodosVencidos('2026-10-08', 'Mensual', '2026-11-02', 1)).toBe(1);
+    expect(periodosVencidos('2026-10-08', 'Mensual', '2026-10-31', 1)).toBe(0);
   });
 });
 
 describe('P001 · solo réditos, en mora', () => {
   const r = calcularResumen(
-    { fecha: '2026-06-01', capital: 2_000_000, tasa: 0.05, frecuencia: 'Mensual', abonoPactado: 0, diasGracia: 3, activo: true },
+    { fecha: '2026-06-01', capital: 2_000_000, tasa: 0.05, frecuencia: 'Mensual', abonoPactado: 0, diasGracia: 3, activo: true, diaCobro: 1 },
     [
       { fecha: '2026-07-01', tipo: 'Réditos', monto: 100_000 },
       { fecha: '2026-08-01', tipo: 'Réditos', monto: 100_000 },
@@ -40,7 +48,7 @@ describe('P001 · solo réditos, en mora', () => {
 
 describe('P002 · quincenal con abono pactado, al día', () => {
   const r = calcularResumen(
-    { fecha: '2026-09-20', capital: 1_000_000, tasa: 0.03, frecuencia: 'Quincenal', abonoPactado: 100_000, diasGracia: 2, activo: true },
+    { fecha: '2026-09-20', capital: 1_000_000, tasa: 0.03, frecuencia: 'Quincenal', abonoPactado: 100_000, diasGracia: 2, activo: true, diaCobro: 20 },
     [
       { fecha: '2026-10-05', tipo: 'Réditos', monto: 30_000 },
       { fecha: '2026-10-05', tipo: 'Capital', monto: 100_000 },
@@ -58,7 +66,7 @@ describe('P002 · quincenal con abono pactado, al día', () => {
 });
 
 describe('estados especiales', () => {
-  const base = { fecha: '2026-01-10', capital: 500_000, tasa: 0.05, frecuencia: 'Mensual' as const, abonoPactado: 0, diasGracia: 3, activo: true };
+  const base = { fecha: '2026-01-10', capital: 500_000, tasa: 0.05, frecuencia: 'Mensual' as const, abonoPactado: 0, diasGracia: 3, activo: true, diaCobro: 10 };
 
   it('marca pagado cuando no queda saldo ni réditos', () => {
     const r = calcularResumen(base, [
@@ -70,6 +78,16 @@ describe('estados especiales', () => {
 
   it('respeta un préstamo inactivo', () => {
     expect(calcularResumen({ ...base, activo: false }, [], HOY).estado).toBe('Inactivo');
+  });
+
+  it('próximo cobro sigue el día pactado aunque la fecha del préstamo sea otra', () => {
+    const r = calcularResumen(
+      { ...base, fecha: '2026-10-08', diaCobro: 1 },
+      [],
+      '2026-10-14',
+    );
+    expect(r.proximaFecha).toBe('2026-11-01');
+    expect(r.periodosVencidos).toBe(0);
   });
 });
 

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { aNumero, PesosPipe } from '../../core/formato';
 import { Prestamo } from '../../core/modelos';
 import { PrestamosService } from '../../core/prestamos.service';
-import { Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
+import { aFecha, Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
 
 /** Modal para crear o editar un préstamo. */
 @Component({
@@ -18,6 +18,10 @@ import { Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
             <label class="campo">Deudor *<input name="deudor" [(ngModel)]="deudor" required></label>
             <label class="campo">Teléfono<input name="telefono" [(ngModel)]="telefono" inputmode="tel"></label>
             <label class="campo">Fecha del préstamo *<input type="date" name="fecha" [(ngModel)]="fecha" [max]="hoy" required></label>
+            <label class="campo">Día de cobro *
+              <input type="number" name="diaCobro" min="1" max="31" [(ngModel)]="diaCobro" required>
+              <span class="muted" style="font-weight: 400">Día del mes pactado (ej. 1). Si el mes no tiene ese día, se usa el último.</span>
+            </label>
             <label class="campo">Capital prestado *<input name="capital" [ngModel]="capital()" (ngModelChange)="capital.set(miles($event))" inputmode="numeric" required></label>
             <label class="campo">Tasa por periodo (%) *<input name="tasa" [ngModel]="tasa()" (ngModelChange)="tasa.set($event)" inputmode="decimal" required></label>
             <label class="campo">Frecuencia de cobro
@@ -32,8 +36,8 @@ import { Frecuencia, hoyIso } from '../../domain/prestamos-calculo';
           <div class="resumen"><div><span>Cuota del primer periodo</span><strong>{{ cuota() | pesos }}</strong></div></div>
           @if (error()) { <span class="error">{{ error() }}</span> }
           <div class="modal__pie">
-            <button class="btn" type="button" (click)="cerrar.emit()">Cancelar</button>
-            <button class="btn btn--primario" type="submit" [disabled]="guardando()">{{ prestamo() ? 'Guardar cambios' : 'Crear préstamo' }}</button>
+            <button class="btn" type="button" (click)="cerrar.emit()" [disabled]="guardando()">Cancelar</button>
+            <button class="btn btn--primario" type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : (prestamo() ? 'Guardar cambios' : 'Crear préstamo') }}</button>
           </div>
         </div>
       </form>
@@ -50,6 +54,8 @@ export class PrestamoForm implements OnInit {
   deudor = '';
   telefono = '';
   fecha = this.hoy;
+  /** Por defecto el día 1 (cobro al inicio de mes), independiente de la fecha del préstamo. */
+  diaCobro = 1;
   gracia = 3;
   notas = '';
   readonly capital = signal('');
@@ -71,6 +77,7 @@ export class PrestamoForm implements OnInit {
     this.deudor = p.deudor;
     this.telefono = p.telefono ?? '';
     this.fecha = p.fecha;
+    this.diaCobro = p.dia_cobro ?? aFecha(p.fecha).getDate();
     this.gracia = p.dias_gracia;
     this.notas = p.notas ?? '';
     this.capital.set(this.miles(String(p.capital)));
@@ -91,14 +98,25 @@ export class PrestamoForm implements OnInit {
   async guardar(): Promise<void> {
     const capital = aNumero(this.capital());
     const tasa = this.tasaNum();
+    const dia = Math.trunc(+this.diaCobro);
     if (!this.deudor.trim() || capital <= 0 || !this.fecha) return this.error.set('Deudor, fecha y capital son obligatorios.');
     if (this.fecha > this.hoy) return this.error.set('La fecha no puede ser futura.');
+    if (!Number.isFinite(dia) || dia < 1 || dia > 31) return this.error.set('El día de cobro debe estar entre 1 y 31.');
     if (tasa < 0 || tasa >= 1) return this.error.set('Revisa la tasa: escribe por ejemplo 5 para 5 %.');
     const datos = {
-      deudor: this.deudor.trim(), telefono: this.telefono.trim() || null, fecha: this.fecha, capital, tasa,
-      frecuencia: this.frecuencia(), abono_pactado: aNumero(this.abono()), dias_gracia: Math.max(0, +this.gracia || 0), notas: this.notas.trim() || null,
+      deudor: this.deudor.trim(),
+      telefono: this.telefono.trim() || null,
+      fecha: this.fecha,
+      capital,
+      tasa,
+      frecuencia: this.frecuencia(),
+      dia_cobro: dia,
+      abono_pactado: aNumero(this.abono()),
+      dias_gracia: Math.max(0, +this.gracia || 0),
+      notas: this.notas.trim() || null,
     };
     this.guardando.set(true);
+    this.error.set(null);
     const p = this.prestamo();
     const err = p ? await this.datos.editar(p.id, datos) : await this.datos.crear(datos);
     this.guardando.set(false);

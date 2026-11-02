@@ -7,6 +7,7 @@
  * - Los réditos se causan al final de cada periodo sobre el saldo de capital vigente.
  * - Un abono a capital deja de causar réditos en los periodos siguientes.
  * - El "abono pactado" es capital que debe abonar cada periodo (0 = solo réditos).
+ * - El día de cobro (mensual) es pactado y no tiene que coincidir con el día del préstamo.
  */
 
 export type Frecuencia = 'Mensual' | 'Quincenal' | 'Semanal' | 'Diario';
@@ -20,6 +21,8 @@ export interface DatosPrestamo {
   abonoPactado: number;
   diasGracia: number;
   activo: boolean;
+  /** Día del mes pactado para cobrar (1–31). Solo afecta frecuencia Mensual. */
+  diaCobro: number;
 }
 
 export interface DatosPago {
@@ -66,30 +69,38 @@ export function diasEntre(desde: string, hasta: string): number {
   return Math.round((aFecha(hasta).getTime() - aFecha(desde).getTime()) / 86_400_000);
 }
 
-/** Meses completos entre dos fechas, como DATEDIF(…, "m") de Excel. */
-function mesesCompletos(desde: string, hasta: string): number {
-  const a = aFecha(desde);
+/** Día efectivo de cobro en un mes (si piden 31 en febrero → último día). */
+export function diaCobroEfectivo(anio: number, mes0: number, diaCobro: number): number {
+  const ultimo = new Date(anio, mes0 + 1, 0).getDate();
+  return Math.min(Math.max(1, diaCobro || 1), ultimo);
+}
+
+/** Meses completos hasta el día de cobro pactado (como DATEDIF, pero con día de cobro). */
+function mesesCompletosHastaCobro(inicio: string, diaCobro: number, hasta: string): number {
+  const a = aFecha(inicio);
   const b = aFecha(hasta);
   let meses = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-  if (b.getDate() < a.getDate()) meses--;
+  const dia = diaCobroEfectivo(b.getFullYear(), b.getMonth(), diaCobro);
+  if (b.getDate() < dia) meses--;
   return Math.max(0, meses);
 }
 
 /** Cuántos periodos se han vencido entre el inicio del préstamo y una fecha. */
-export function periodosVencidos(inicio: string, frecuencia: Frecuencia, fecha: string): number {
+export function periodosVencidos(inicio: string, frecuencia: Frecuencia, fecha: string, diaCobro?: number): number {
   if (fecha < inicio) return 0;
-  if (frecuencia === 'Mensual') return mesesCompletos(inicio, fecha);
+  if (frecuencia === 'Mensual') {
+    return mesesCompletosHastaCobro(inicio, diaCobro ?? aFecha(inicio).getDate(), fecha);
+  }
   return Math.floor(diasEntre(inicio, fecha) / DIAS_PERIODO[frecuencia]);
 }
 
 /** Fecha de vencimiento del periodo n (n = 1 es el primer cobro). */
-export function vencimientoPeriodo(inicio: string, frecuencia: Frecuencia, n: number): string {
+export function vencimientoPeriodo(inicio: string, frecuencia: Frecuencia, n: number, diaCobro?: number): string {
   const f = aFecha(inicio);
   if (frecuencia === 'Mensual') {
-    const dia = f.getDate();
+    const dia = diaCobro ?? f.getDate();
     const destino = new Date(f.getFullYear(), f.getMonth() + n, 1);
-    const ultimoDia = new Date(destino.getFullYear(), destino.getMonth() + 1, 0).getDate();
-    destino.setDate(Math.min(dia, ultimoDia));
+    destino.setDate(diaCobroEfectivo(destino.getFullYear(), destino.getMonth(), dia));
     return aIso(destino);
   }
   f.setDate(f.getDate() + n * DIAS_PERIODO[frecuencia]);
@@ -100,7 +111,8 @@ export function vencimientoPeriodo(inicio: string, frecuencia: Frecuencia, n: nu
 const pesos = (n: number) => Math.round(n);
 
 export function calcularResumen(p: DatosPrestamo, pagos: DatosPago[], hoy: string, diasAviso = 3): ResumenPrestamo {
-  const pv = periodosVencidos(p.fecha, p.frecuencia, hoy);
+  const dia = p.diaCobro || 1;
+  const pv = periodosVencidos(p.fecha, p.frecuencia, hoy, dia);
   const abonosCapital = pagos.filter((g) => g.tipo === 'Capital').reduce((a, g) => a + g.monto, 0);
   const reditosPagados = pagos.filter((g) => g.tipo === 'Réditos').reduce((a, g) => a + g.monto, 0);
   const saldo = Math.max(0, p.capital - abonosCapital);
@@ -108,20 +120,20 @@ export function calcularResumen(p: DatosPrestamo, pagos: DatosPago[], hoy: strin
   // Réditos que dejó de causar cada abono a capital desde el periodo en que se hizo.
   const ahorro = pagos
     .filter((g) => g.tipo === 'Capital')
-    .reduce((a, g) => a + g.monto * p.tasa * Math.max(0, pv - periodosVencidos(p.fecha, p.frecuencia, g.fecha)), 0);
+    .reduce((a, g) => a + g.monto * p.tasa * Math.max(0, pv - periodosVencidos(p.fecha, p.frecuencia, g.fecha, dia)), 0);
   const reditosCausados = Math.max(0, p.capital * p.tasa * pv - ahorro);
   const reditosPendientes = Math.max(0, reditosCausados - reditosPagados);
   const capitalAtrasado = Math.max(0, Math.min(p.capital, p.abonoPactado * pv) - abonosCapital);
   const total = reditosPendientes + capitalAtrasado;
   const cuota = saldo <= 0 ? 0 : saldo * p.tasa + Math.min(p.abonoPactado, saldo);
-  const proximaFecha = saldo <= 0 ? null : vencimientoPeriodo(p.fecha, p.frecuencia, pv + 1);
+  const proximaFecha = saldo <= 0 ? null : vencimientoPeriodo(p.fecha, p.frecuencia, pv + 1, dia);
 
   let atrasados = 0;
   if (total > 0) {
     const divisor = cuota > 0 ? cuota : Math.max(1, p.capital * p.tasa);
     atrasados = Math.min(pv, Math.ceil(total / divisor));
   }
-  const cuotaMasAntigua = atrasados > 0 ? vencimientoPeriodo(p.fecha, p.frecuencia, pv - atrasados + 1) : null;
+  const cuotaMasAntigua = atrasados > 0 ? vencimientoPeriodo(p.fecha, p.frecuencia, pv - atrasados + 1, dia) : null;
   const diasMora = cuotaMasAntigua ? Math.max(0, diasEntre(cuotaMasAntigua, hoy)) : 0;
 
   let estado: EstadoPrestamo;

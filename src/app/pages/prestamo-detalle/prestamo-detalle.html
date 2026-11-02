@@ -3,7 +3,7 @@
     <a class="btn" routerLink="/prestamos">← Préstamos</a>
     <div style="flex: 1 1 240px">
       <h2 style="font-size: 20px">{{ p.codigo }} · {{ p.deudor }} <span [class]="clase[p.resumen.estado]">{{ p.resumen.estado }}{{ p.resumen.diasMora ? ' · ' + p.resumen.diasMora + ' d' : '' }}</span></h2>
-      <span class="muted">{{ p.telefono || 'Sin teléfono' }} · prestado el {{ p.fecha | fecha }} · {{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</span>
+      <span class="muted">{{ p.telefono || 'Sin teléfono' }} · prestado el {{ p.fecha | fecha }}@if (p.frecuencia === 'Mensual') { · cobra el día {{ diaCobro(p) }} } · {{ (+p.tasa * 100).toLocaleString('es-CO') }}% {{ p.frecuencia.toLowerCase() }}</span>
     </div>
     @if (p.activo && p.resumen.estado !== 'Pagado') { <button class="btn btn--primario" type="button" (click)="modal.set('pago')">Registrar pago</button> }
     <button class="btn" type="button" (click)="modal.set('editar')">Editar</button>
@@ -52,22 +52,26 @@
     </div>
   } @else {
     <div class="card tabla-scroll">
-      <table class="tabla">
-        <thead><tr><th>Fecha</th><th>Evento</th><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
-        <tbody>
-          @for (h of historial(); track $index) {
-            <tr>
-              <td>{{ h.primera ? (h.fecha | fecha) : '' }}</td>
-              <td>@if (h.primera) { <span class="chip chip--azul">{{ h.evento }}</span> }</td>
-              <td style="font-weight: 700">{{ h.campo }}</td>
-              <td [style.text-decoration]="h.antes !== '—' ? 'line-through' : null" class="muted">{{ h.antes }}</td>
-              <td style="font-weight: 600">{{ h.despues }}</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="5" class="vacio">Sin eventos registrados.</td></tr>
-          }
-        </tbody>
-      </table>
+      @if (cargandoHist() && !historial().length) {
+        <div class="vacio">Cargando historial…</div>
+      } @else {
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Evento</th><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+          <tbody>
+            @for (h of historial(); track $index) {
+              <tr>
+                <td>{{ h.primera ? (h.fecha | fecha) : '' }}</td>
+                <td>@if (h.primera) { <span class="chip chip--azul">{{ h.evento }}</span> }</td>
+                <td style="font-weight: 700">{{ h.campo }}</td>
+                <td [style.text-decoration]="h.antes !== '—' ? 'line-through' : null" class="muted">{{ h.antes }}</td>
+                <td style="font-weight: 600">{{ h.despues }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="vacio">Sin eventos registrados.</td></tr>
+            }
+          </tbody>
+        </table>
+      }
     </div>
   }
 
@@ -84,16 +88,19 @@
           } @else {
             <p style="margin: 0">El préstamo volverá a su estado normal.</p>
           }
+          @if (error()) { <span class="error">{{ error() }}</span> }
           <div class="modal__pie">
-            <button class="btn" type="button" (click)="modal.set(null)">Cancelar</button>
-            <button class="btn btn--primario" type="button" (click)="cambiarEstado()">{{ p.activo ? 'Desactivar' : 'Activar' }}</button>
+            <button class="btn" type="button" (click)="modal.set(null)" [disabled]="guardando()">Cancelar</button>
+            <button class="btn btn--primario" type="button" (click)="cambiarEstado()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : (p.activo ? 'Desactivar' : 'Activar') }}</button>
           </div>
         </div>
       </div>
     </div>
   }
-} @else {
+} @else if (datos.cargando()) {
   <div class="card vacio">Cargando préstamo…</div>
+} @else {
+  <div class="card vacio">No se encontró el préstamo. <a routerLink="/prestamos">Volver a préstamos</a></div>
 }
 
 @if (aviso()) {
