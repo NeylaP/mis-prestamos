@@ -1,7 +1,8 @@
-// Producción (GitHub Pages). El workflow de despliegue reemplaza estos valores
-// con las variables del repositorio SUPABASE_URL y SUPABASE_ANON_KEY.
-// La llave "anon" es pública por diseño: la protección la dan las políticas RLS.
-// NUNCA pongas aquí la llave service_role.
+// Producción (GitHub Pages).
+// Si existen las variables de Actions SUPABASE_URL y SUPABASE_ANON_KEY, el workflow
+// "Publicar en GitHub Pages" las escribe aquí antes de compilar.
+// Si no, se usan estos valores por defecto. La llave "anon" es pública por diseño:
+// la protección la dan las políticas RLS. NUNCA pongas aquí la llave service_role.
 export const environment = {
   production: true,
   supabaseUrl: 'https://qvxkqvlhzjdhohgxzbym.supabase.co',

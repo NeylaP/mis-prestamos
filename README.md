@@ -37,10 +37,12 @@ npx ng test          # pruebas del motor de cálculo
 
 ## 3. GitHub Pages
 
-1. Sube el proyecto a un repositorio llamado `mis-prestamos` (público: el código no lleva secretos).
-2. **Settings → Pages → Source**: *GitHub Actions*.
-3. **Settings → Secrets and variables → Actions → Variables**: crea `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
-4. Haz push a `main`. El workflow *Publicar en GitHub Pages* prueba, compila y publica.
+1. Sube el proyecto a un repositorio llamado `mis-prestamos` (público: el código no lleva secretos de `service_role`).
+2. **Settings → Pages → Source**: *GitHub Actions* (no “Deploy from a branch”).
+3. **Settings → Secrets and variables → Actions → Variables** (recomendado): crea `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+   Si no las defines, el workflow usa los valores de `src/environments/environment.ts`.
+4. Haz push a `main` (o *Actions → Publicar en GitHub Pages → Run workflow*). El workflow prueba, compila y publica en
+   `https://TU-USUARIO.github.io/mis-prestamos/`.
 
 > GitHub Pages es para uso personal. Si algún día ofreces la app a otros prestamistas como servicio,
 > múdala a un hosting que permita uso comercial (Cloudflare Pages, Netlify, Azure Static Web Apps).
