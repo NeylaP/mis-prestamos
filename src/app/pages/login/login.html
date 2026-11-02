@@ -35,7 +35,7 @@
         @if (enviado()) {
           <div class="ok" role="status">Si el correo está registrado, te llegará un enlace. Revisa también la carpeta de spam.</div>
         }
-        <button class="btn btn--primario grande" type="submit" [disabled]="enviando()">Enviar enlace</button>
+        <button class="btn btn--primario grande" type="submit" [disabled]="enviando() || enviado()">{{ enviando() ? 'Enviando…' : 'Enviar enlace' }}</button>
         <button class="enlace" type="button" (click)="cambiarModo('login')">← Volver a iniciar sesión</button>
       </form>
     }

@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { calcularResumen, hoyIso } from '../domain/prestamos-calculo';
+import { aFecha, calcularResumen, hoyIso } from '../domain/prestamos-calculo';
 import { AuthService } from './auth.service';
 import { Evento, MedioPago, NuevoPrestamo, Pago, Prestamo, PrestamoConResumen } from './modelos';
 import { SupabaseService } from './supabase';
@@ -28,7 +28,16 @@ export class PrestamosService {
       .map((p) => ({
         ...p,
         resumen: calcularResumen(
-          { fecha: p.fecha, capital: +p.capital, tasa: +p.tasa, frecuencia: p.frecuencia, abonoPactado: +p.abono_pactado, diasGracia: p.dias_gracia, activo: p.activo },
+          {
+            fecha: p.fecha,
+            capital: +p.capital,
+            tasa: +p.tasa,
+            frecuencia: p.frecuencia,
+            abonoPactado: +p.abono_pactado,
+            diasGracia: p.dias_gracia,
+            activo: p.activo,
+            diaCobro: p.dia_cobro ?? aFecha(p.fecha).getDate(),
+          },
           pagos.filter((g) => g.prestamo_id === p.id).map((g) => ({ fecha: g.fecha, tipo: g.tipo, monto: +g.monto })),
           hoy,
         ),
@@ -58,15 +67,25 @@ export class PrestamosService {
   }
 
   async crear(datos: Omit<NuevoPrestamo, 'codigo'>): Promise<string | null> {
+    this.cargando.set(true);
+    this.error.set(null);
     const { error } = await this.sb.from('prestamos').insert({ ...datos, codigo: this.siguienteCodigo() });
-    if (error) return 'No se pudo crear el préstamo: ' + error.message;
+    if (error) {
+      this.cargando.set(false);
+      return 'No se pudo crear el préstamo: ' + error.message;
+    }
     await this.cargar();
     return null;
   }
 
   async editar(id: string, cambios: Partial<Prestamo>): Promise<string | null> {
+    this.cargando.set(true);
+    this.error.set(null);
     const { error } = await this.sb.from('prestamos').update(cambios).eq('id', id);
-    if (error) return 'No se pudo guardar: ' + error.message;
+    if (error) {
+      this.cargando.set(false);
+      return 'No se pudo guardar: ' + error.message;
+    }
     await this.cargar();
     return null;
   }
@@ -86,13 +105,18 @@ export class PrestamosService {
   async registrarPago(opc: {
     prestamoId: string; fecha: string; aReditos: number; aCapital: number; medio: MedioPago; archivo: File | null; nota: string;
   }): Promise<string | null> {
+    this.cargando.set(true);
+    this.error.set(null);
     let ruta: string | null = null;
     if (opc.archivo) {
       const uid = this.auth.usuario()?.id;
       const ext = opc.archivo.name.split('.').pop()?.toLowerCase() ?? 'jpg';
       ruta = `${uid}/${opc.prestamoId}/${Date.now()}.${ext}`;
       const subida = await this.sb.storage.from('comprobantes').upload(ruta, opc.archivo, { contentType: opc.archivo.type });
-      if (subida.error) return 'No se pudo subir el comprobante: ' + subida.error.message;
+      if (subida.error) {
+        this.cargando.set(false);
+        return 'No se pudo subir el comprobante: ' + subida.error.message;
+      }
     }
     const filas = [
       { tipo: 'Réditos', monto: opc.aReditos },
@@ -101,7 +125,10 @@ export class PrestamosService {
       .filter((f) => f.monto > 0)
       .map((f) => ({ ...f, prestamo_id: opc.prestamoId, fecha: opc.fecha, medio: opc.medio, comprobante_path: ruta, nota: opc.nota || null }));
     const { error } = await this.sb.from('pagos').insert(filas);
-    if (error) return 'No se pudo registrar el pago: ' + error.message;
+    if (error) {
+      this.cargando.set(false);
+      return 'No se pudo registrar el pago: ' + error.message;
+    }
     await this.cargar();
     return null;
   }

@@ -4,6 +4,10 @@
 .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--verde); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .nombre { font-weight: 800; font-size: 14px; line-height: 1.1; }
 .usuario { font-size: 13px; color: var(--gris); }
+.cargando-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--verde); }
+.cargando-pill__giro { width: 14px; height: 14px; border: 2px solid var(--verde-claro); border-top-color: var(--verde); border-radius: 50%; animation: girar .7s linear infinite; }
+.cargando-velo { position: fixed; inset: 60px 0 0 0; background: rgba(233, 238, 236, .45); pointer-events: none; z-index: 40; }
+@keyframes girar { to { transform: rotate(360deg); } }
 .cuerpo { flex: 1; display: flex; }
 .lateral { width: 92px; background: var(--lateral); display: flex; flex-direction: column; padding: 8px 0; gap: 2px; }
 .lateral a { height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;

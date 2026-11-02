@@ -12,6 +12,8 @@ export interface Prestamo {
   capital: number;
   tasa: number;
   frecuencia: Frecuencia;
+  /** Día del mes de corte/cobro (1–31). Independiente de `fecha`. */
+  dia_cobro: number;
   abono_pactado: number;
   dias_gracia: number;
   activo: boolean;

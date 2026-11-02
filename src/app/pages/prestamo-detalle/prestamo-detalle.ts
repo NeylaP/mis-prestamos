@@ -2,14 +2,16 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CLASE_ESTADO, FechaPipe, PesosPipe } from '../../core/formato';
-import { Evento, Pago } from '../../core/modelos';
+import { Evento, Pago, Prestamo } from '../../core/modelos';
 import { PrestamosService } from '../../core/prestamos.service';
+import { aFecha } from '../../domain/prestamos-calculo';
 import { PrestamoForm } from '../prestamos/prestamo-form';
 import { PagoForm } from './pago-form';
 
 const CAMPOS: Record<string, string> = {
   deudor: 'Deudor', telefono: 'Teléfono', fecha: 'Fecha', capital: 'Capital', tasa: 'Tasa', frecuencia: 'Frecuencia',
-  abono_pactado: 'Abono pactado', dias_gracia: 'Días de gracia', activo: 'Activo', motivo_inactivo: 'Motivo', notas: 'Notas', inactivo_desde: 'Inactivo desde',
+  dia_cobro: 'Día de corte', abono_pactado: 'Abono pactado', dias_gracia: 'Días de gracia', activo: 'Activo',
+  motivo_inactivo: 'Motivo', notas: 'Notas', inactivo_desde: 'Inactivo desde',
 };
 const TITULO_EVENTO: Record<string, string> = { creado: 'Creación', editado: 'Edición', activado: 'Activación', desactivado: 'Desactivación', pago: 'Pago' };
 
@@ -19,7 +21,7 @@ const TITULO_EVENTO: Record<string, string> = { creado: 'Creación', editado: 'E
   templateUrl: './prestamo-detalle.html',
 })
 export class PrestamoDetalle {
-  private readonly datos = inject(PrestamosService);
+  protected readonly datos = inject(PrestamosService);
   readonly id = input.required<string>();
   protected readonly clase = CLASE_ESTADO;
 
@@ -28,6 +30,9 @@ export class PrestamoDetalle {
   readonly modal = signal<'pago' | 'editar' | 'desactivar' | null>(null);
   readonly motivo = signal('');
   readonly aviso = signal<string | null>(null);
+  readonly error = signal<string | null>(null);
+  readonly guardando = signal(false);
+  readonly cargandoHist = signal(false);
   readonly eventos = signal<Evento[]>([]);
 
   /** Extracto: entrega del préstamo + pagos en orden, con saldo y réditos acumulados. */
@@ -63,8 +68,18 @@ export class PrestamoDetalle {
 
   constructor() {
     effect(() => {
-      if (this.tab() === 'hist' && this.p()) this.datos.eventos(this.id()).then((ev) => this.eventos.set(ev));
+      if (this.tab() === 'hist' && this.p()) {
+        this.cargandoHist.set(true);
+        this.datos.eventos(this.id()).then((ev) => {
+          this.eventos.set(ev);
+          this.cargandoHist.set(false);
+        });
+      }
     });
+  }
+
+  protected diaCobro(p: Prestamo): number {
+    return p.dia_cobro ?? aFecha(p.fecha).getDate();
   }
 
   private valor(campo: string, v: unknown): string {
@@ -76,22 +91,35 @@ export class PrestamoDetalle {
   }
 
   async verComprobante(ruta: string): Promise<void> {
+    this.guardando.set(true);
     const url = await this.datos.urlComprobante(ruta);
+    this.guardando.set(false);
     if (url) window.open(url, '_blank', 'noopener');
+    else this.mostrar('No se pudo abrir el comprobante.');
   }
 
   async cambiarEstado(): Promise<void> {
     const p = this.p();
     if (!p) return;
+    this.guardando.set(true);
+    this.error.set(null);
     const err = p.activo ? await this.datos.desactivar(p.id, this.motivo().trim()) : await this.datos.activar(p.id);
+    this.guardando.set(false);
+    if (err) return this.error.set(err);
     this.modal.set(null);
-    this.mostrar(err ?? (p.activo ? 'Préstamo desactivado' : 'Préstamo activado'));
+    this.mostrar(p.activo ? 'Préstamo desactivado' : 'Préstamo activado');
   }
 
   mostrar(msg: string): void {
     this.modal.set(null);
     this.aviso.set(msg);
     setTimeout(() => this.aviso.set(null), 3000);
-    if (this.tab() === 'hist') this.datos.eventos(this.id()).then((ev) => this.eventos.set(ev));
+    if (this.tab() === 'hist') {
+      this.cargandoHist.set(true);
+      this.datos.eventos(this.id()).then((ev) => {
+        this.eventos.set(ev);
+        this.cargandoHist.set(false);
+      });
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { PrestamosService } from '../core/prestamos.service';
@@ -18,6 +18,8 @@ export class Shell implements OnInit {
   private readonly datos = inject(PrestamosService);
 
   readonly correo = computed(() => this.auth.usuario()?.email ?? '');
+  protected readonly cargando = this.datos.cargando;
+  readonly saliendo = signal(false);
 
   // Los módulos que aún no existen llevan a "Próximamente" y se irán activando.
   readonly menu: ItemMenu[] = [
@@ -34,7 +36,9 @@ export class Shell implements OnInit {
   }
 
   async salir(): Promise<void> {
+    this.saliendo.set(true);
     await this.auth.salir();
+    this.saliendo.set(false);
     this.router.navigateByUrl('/login');
   }
 }

@@ -8,7 +8,7 @@ Cada usuario ve **solo sus propios** préstamos y pagos (seguridad por filas, RL
 - Login con correo y contraseña, recuperación de contraseña y rutas protegidas.
 - Inicio con indicadores y cobros ordenados por urgencia.
 - Préstamos: crear, editar, buscar, filtrar, activar y desactivar.
-- Detalle del préstamo: registrar pagos (reparto automático en réditos y capital), comprobante obligatorio para Nequi y transferencia, extracto de movimientos e historial de cambios.
+- Detalle del préstamo: editar todos los datos (incluído día de cobro), registrar pagos (por defecto réditos; abono a capital solo si se elige), comprobante obligatorio para Nequi y transferencia, extracto e historial.
 - Motor de cálculo en `src/app/domain/` (funciones puras con pruebas), listo para traducirse a C#.
 - Workflows: publicación en GitHub Pages, respaldo semanal y ping para que Supabase no se pause.
 
@@ -16,6 +16,7 @@ Cada usuario ve **solo sus propios** préstamos y pagos (seguridad por filas, RL
 
 1. Crea un proyecto en [supabase.com](https://supabase.com), región **South America (São Paulo)**.
 2. **SQL Editor** → pega todo `supabase/migrations/001_inicial.sql` → **Run**.
+   Si la base ya existía, ejecuta también `supabase/migrations/002_dia_cobro.sql` (agrega el día de cobro pactado).
 3. **Authentication → Sign In / Providers**: deja activo *Email* y **desactiva "Allow new users to sign up"**. Así nadie puede crearse una cuenta solo.
 4. **Authentication → Users → Add user**: crea tu usuario y el de la otra persona (o invítala por correo).
 5. **Authentication → URL Configuration**:

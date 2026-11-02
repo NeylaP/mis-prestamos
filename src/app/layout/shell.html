@@ -4,8 +4,13 @@
     <span class="nombre">Mis<br>Préstamos</span>
   </a>
   <div class="espacio"></div>
+  @if (cargando()) {
+    <span class="cargando-pill" role="status" aria-live="polite">
+      <span class="cargando-pill__giro" aria-hidden="true"></span> Cargando…
+    </span>
+  }
   <span class="usuario">{{ correo() }}</span>
-  <button class="btn btn--chico" type="button" (click)="salir()">Salir</button>
+  <button class="btn btn--chico" type="button" (click)="salir()" [disabled]="saliendo()">{{ saliendo() ? 'Saliendo…' : 'Salir' }}</button>
 </header>
 
 <div class="cuerpo">
@@ -21,3 +26,7 @@
     <router-outlet />
   </main>
 </div>
+
+@if (cargando()) {
+  <div class="cargando-velo" aria-hidden="true"></div>
+}

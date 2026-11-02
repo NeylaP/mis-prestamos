@@ -15,13 +15,13 @@ import { AuthService } from '../../core/auth.service';
           <p class="muted">El enlace no es válido o ya venció. Pide uno nuevo desde la pantalla de inicio de sesión.</p>
         } @else {
           <label class="campo">Nueva contraseña (mínimo 8 caracteres)
-            <input type="password" name="c1" autocomplete="new-password" [(ngModel)]="clave1" required>
+            <input type="password" name="c1" autocomplete="new-password" [(ngModel)]="clave1" required [disabled]="enviando()">
           </label>
           <label class="campo">Repítela
-            <input type="password" name="c2" autocomplete="new-password" [(ngModel)]="clave2" required>
+            <input type="password" name="c2" autocomplete="new-password" [(ngModel)]="clave2" required [disabled]="enviando()">
           </label>
           @if (error()) { <span class="error">{{ error() }}</span> }
-          <button class="btn btn--primario" type="submit">Guardar contraseña</button>
+          <button class="btn btn--primario" type="submit" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : 'Guardar contraseña' }}</button>
         }
       </form>
     </div>
@@ -35,11 +35,15 @@ export class Restablecer {
   clave1 = '';
   clave2 = '';
   readonly error = signal<string | null>(null);
+  readonly enviando = signal(false);
 
   async guardar(): Promise<void> {
     if (this.clave1.length < 8) return this.error.set('Usa al menos 8 caracteres.');
     if (this.clave1 !== this.clave2) return this.error.set('Las contraseñas no coinciden.');
+    this.enviando.set(true);
+    this.error.set(null);
     const err = await this.auth.cambiarClave(this.clave1);
+    this.enviando.set(false);
     if (err) return this.error.set(err);
     this.router.navigateByUrl('/');
   }
